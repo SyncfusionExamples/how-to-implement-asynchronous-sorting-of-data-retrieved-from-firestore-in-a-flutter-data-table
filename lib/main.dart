@@ -1,29 +1,20 @@
-# How to implement asynchronous sorting of data retrieved from Firestore in a Flutter DataTable (SfDataGrid)?
+import 'dart:async';
 
-In this article, we will discuss how to implement asynchronous sorting in a [Flutter DataGrid](https://www.syncfusion.com/flutter-widgets/flutter-datagrid) that retrieves data from Firestore. We will cover the steps and techniques required to fetch data from Firestore, handle asynchronous operations, and dynamically sort the data based on user interactions.
-
-## STEP 1:
-You need to add the following package in the dependencies of pubspec.yaml.
-
-```dart
-firebase_core: ^2.13.0
-cloud_firestore: ^4.7.1
-
- ```
-
-## STEP 2: 
-Import the following library into the flutter application:
-
- ```dart
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'employee.dart';
 
- ```
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: defaultFirebaseOptions);
+  runApp(MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const SfDataGridDemo()));
+}
 
-## STEP 3:
-Initialize the [SfDataGrid](https://pub.dev/documentation/syncfusion_flutter_datagrid/latest/datagrid/SfDataGrid-class.html) with all the required details. Fetch the data from the Firestore database by passing the required collection name. The [StreamController](https://api.flutter.dev/flutter/dart-async/StreamController-class.html) that will be used to control the loading state. It will emit true or false values to show or hide the loading indicator.
-
- ```dart
 const defaultFirebaseOptions = FirebaseOptions(
   apiKey: '',
   authDomain: '',
@@ -32,7 +23,6 @@ const defaultFirebaseOptions = FirebaseOptions(
   messagingSenderId: '',
   appId: '',
 );
-
 StreamController<bool> loadingController = StreamController<bool>();
 
 class SfDataGridDemo extends StatefulWidget {
@@ -104,13 +94,44 @@ class SfDataGridDemoState extends State<SfDataGridDemo> {
   }
 }
 
- ```
+class EmployeeDataSource extends DataGridSource {
+  EmployeeDataSource(this.employeeData) {
+    _buildDataRow();
+  }
 
-## STEP 4:
-The performSorting method accepts a list of DataGridRow objects as input. It includes a simulated asynchronous that applies the [Future.delay](https://api.flutter.dev/flutter/dart-async/Future/Future.delayed.html) for a specific time to imitate server-side processing. Upon completion of the delay, the loadingController is updated to signal the end of loading. If the current column's sortDirection is set to ascending, the dataGridRow variable is assigned a new list of DataGridRow objects. Each row represents an employee, with cells containing their respective attributes. The isSuspend variable is then set to false, indicating the completion of the sorting process. If the sortDirection is descending, the same steps are followed.
+  List<DataGridRow> dataGridRows = [];
+  List<Employee> employeeData;
 
-```dart
-bool isSuspend = true;
+  void _buildDataRow() {
+    dataGridRows = employeeData
+        .map<DataGridRow>((e) => DataGridRow(cells: [
+              DataGridCell<String>(columnName: 'id', value: e.id),
+              DataGridCell<String>(columnName: 'name', value: e.name),
+              DataGridCell<String>(
+                  columnName: 'designation', value: e.designation),
+              DataGridCell<String>(columnName: 'salary', value: e.salary),
+            ]))
+        .toList();
+  }
+
+  @override
+  List<DataGridRow> get rows => dataGridRows;
+
+  @override
+  DataGridRowAdapter buildRow(
+    DataGridRow row,
+  ) {
+    return DataGridRowAdapter(
+        cells: row.getCells().map<Widget>((e) {
+      return Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(8.0),
+        child: Text(e.value.toString()),
+      );
+    }).toList());
+  }
+
+  bool isSuspend = true;
   @override
   Future<void> performSorting(List<DataGridRow> rows) async {
     if (!isSuspend || sortedColumns.isEmpty) {
@@ -169,5 +190,38 @@ bool isSuspend = true;
             ]))
         .toList();
   }
+}
 
- ```
+List<GridColumn> get getColumns {
+  return <GridColumn>[
+    GridColumn(
+        columnName: 'id',
+        label: Container(
+            padding: const EdgeInsets.all(16.0),
+            alignment: Alignment.center,
+            child: const Text(
+              'ID',
+            ))),
+    GridColumn(
+        columnName: 'name',
+        label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: const Text('Name'))),
+    GridColumn(
+        columnName: 'designation',
+        label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: const Text(
+              'Designation',
+              overflow: TextOverflow.ellipsis,
+            ))),
+    GridColumn(
+        columnName: 'salary',
+        label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: const Text('Salary'))),
+  ];
+}
